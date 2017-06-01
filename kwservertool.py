@@ -27,6 +27,9 @@ from subprocess import call
 
 import argparse, ast, copy, getpass, logging
 
+#API example
+#python kwservertool.py --url http://emenda:8080 --user emenda --api '{"action":"version"}'
+
 parser = argparse.ArgumentParser(description='Klocwork Server Utility Tool')
 parser.add_argument('--url', required=True,
     help='URL to the Klocwork server, e.g. "http://kw.server:8080"')
@@ -34,6 +37,7 @@ parser.add_argument('--user', required=False, default=getpass.getuser(),
     help='The username to use for connecting to the Klocwork server')
 parser.add_argument('--re-project', required=False, default='',
     help='Regular expression for which matching projects will be processed')
+
 
 parser.add_argument('--cmd', required=False, default=None,
     help='Provide a command to execute where {project} will be replaced')
@@ -82,7 +86,7 @@ def main():
             sys.exit("Error: Incorrectly parsed --api command")
         for project in projects:
             values['project'] = project
-            print "Using query: " + values
+            print "Using query: " + str(values)
             # perform action "builds" on project git, on Klocwork server at xubuntu:8080
             query_response = kw_api.execute_query(copy.deepcopy(values))
             # if response is None, then there was an error
