@@ -37,7 +37,8 @@ parser.add_argument('--user', required=False, default=getpass.getuser(),
     help='The username to use for connecting to the Klocwork server')
 parser.add_argument('--re-project', required=False, default='',
     help='Regular expression for which matching projects will be processed')
-
+parser.add_argument('--issues', required=False, dest='issues',
+    action='store_true', help='Execute API query for all issues in matching project(s)')
 
 parser.add_argument('--cmd', required=False, default=None,
     help='Provide a command to execute where {project} will be replaced')
@@ -86,15 +87,49 @@ def main():
             sys.exit("Error: Incorrectly parsed --api command")
         for project in projects:
             values['project'] = project
-            print "Using query: " + str(values)
-            # perform action "builds" on project git, on Klocwork server at xubuntu:8080
-            query_response = kw_api.execute_query(copy.deepcopy(values))
-            # if response is None, then there was an error
-            if query_response.response == None:
-                print "Error: " + query_response.error_msg
+            # if we are to execute the api command over all issues, we must first fetch the issues
+            if args.issues:
+                issue_groups_list = fetch_issues(copy.deepcopy(values))
+                print str(issue_groups_list)
+                for g in issue_groups_list:
+                    id_list = ','.join(str(id) for id in issue_groups_list)
+                    print "Current id_list: " + str(id_list)
+                    values['ids'] = id_list
+                    #Execute the query for this set of ids
+                    query_response = execute_query(copy.deepcopy(values))
+                    if not query_response.response == None:
+                        for i in query_response.response:
+                            print i
+            # nope, we're not doing issues, so just run the query
             else:
-                for i in query_response.response:
-                    print i
+                query_response = execute_query(copy.deepcopy(values))
+                if not query_response.response == None:
+                    for i in query_response.response:
+                        print i
 
+def execute_query(query):
+    print "Using query: " + str(values)
+    # perform query using kwplib
+    query_response = kw_api.execute_query(query)
+    # if response is None, then there was an error
+    if query_response.response == None:
+        print "Error when executing query: " + query_response.error_msg
+    return query_response
+
+def fetch_issues(query):
+    query['action'] = "search"
+    print "Fetching issue list..."
+    query_response = execute_query(query)
+    #Extract issue ids
+    data = json.loads(query_response)
+    issues = data[id]
+    #Split the results into groups to make running queries on them manageable
+    return group_issues(issues)
+        
+def group_issues(issues):
+    ISSUE_GROUP_SIZE = 500
+    for i in range(0,len(issues),ISSUE_GROUP_SIZE):
+        yield issues[i:i + ISSUE_GROUP_SIZE]
+    
 if __name__ == "__main__":
     main()
