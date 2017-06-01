@@ -86,10 +86,16 @@ def main():
         if not isinstance(values,dict):
             sys.exit("Error: Incorrectly parsed --api command")
         for project in projects:
+            #Delete any issue ids left in the query
+            if 'ids' in values.keys():            
+                del values['ids']
+            #Set the project of the query
             values['project'] = project
             # if we are to execute the api command over all issues, we must first fetch the issues
             if args.issues:
                 issue_groups_list = fetch_issues(copy.deepcopy(values), kw_api)
+                #Iterate over each group of issues
+		id_list = ""
                 for g in issue_groups_list:
                     id_list = ','.join(str(id) for id in g)
                     values['ids'] = id_list
@@ -98,6 +104,8 @@ def main():
                     if not query_response.response == None:
                         for i in query_response.response:
                             print i
+                if len(id_list) < 1:
+                    print "No issues returned, continuing to next project."
             # nope, we're not doing issues, so just run the query
             else:
                 query_response = execute_query(copy.deepcopy(values), kw_api)
