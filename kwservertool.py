@@ -25,7 +25,7 @@
 from kwplib import kwplib
 from subprocess import call
 
-import argparse, ast, copy, getpass, logging
+import argparse, ast, copy, getpass, logging, json
 
 #API example
 #python kwservertool.py --url http://emenda:8080 --user emenda --api '{"action":"version"}'
@@ -90,10 +90,8 @@ def main():
             # if we are to execute the api command over all issues, we must first fetch the issues
             if args.issues:
                 issue_groups_list = fetch_issues(copy.deepcopy(values), kw_api)
-                print str(issue_groups_list)
                 for g in issue_groups_list:
-                    id_list = ','.join(str(id) for id in issue_groups_list)
-                    print "Current id_list: " + str(id_list)
+                    id_list = ','.join(str(id) for id in g)
                     values['ids'] = id_list
                     #Execute the query for this set of ids
                     query_response = execute_query(copy.deepcopy(values), kw_api)
@@ -121,8 +119,10 @@ def fetch_issues(query, kw_api):
     print "Fetching issue list..."
     query_response = execute_query(query, kw_api)
     #Extract issue ids
-    data = json.loads(query_response)
-    issues = data[id]
+    issues = []
+    for issue in query_response.response:
+        data = json.loads(issue)
+        issues.append(data['id'])
     #Split the results into groups to make running queries on them manageable
     return group_issues(issues)
         
