@@ -89,26 +89,26 @@ def main():
             values['project'] = project
             # if we are to execute the api command over all issues, we must first fetch the issues
             if args.issues:
-                issue_groups_list = fetch_issues(copy.deepcopy(values))
+                issue_groups_list = fetch_issues(copy.deepcopy(values), kw_api)
                 print str(issue_groups_list)
                 for g in issue_groups_list:
                     id_list = ','.join(str(id) for id in issue_groups_list)
                     print "Current id_list: " + str(id_list)
                     values['ids'] = id_list
                     #Execute the query for this set of ids
-                    query_response = execute_query(copy.deepcopy(values))
+                    query_response = execute_query(copy.deepcopy(values), kw_api)
                     if not query_response.response == None:
                         for i in query_response.response:
                             print i
             # nope, we're not doing issues, so just run the query
             else:
-                query_response = execute_query(copy.deepcopy(values))
+                query_response = execute_query(copy.deepcopy(values), kw_api)
                 if not query_response.response == None:
                     for i in query_response.response:
                         print i
 
-def execute_query(query):
-    print "Using query: " + str(values)
+def execute_query(query, kw_api):
+    print "Using query: " + str(query)
     # perform query using kwplib
     query_response = kw_api.execute_query(query)
     # if response is None, then there was an error
@@ -116,10 +116,10 @@ def execute_query(query):
         print "Error when executing query: " + query_response.error_msg
     return query_response
 
-def fetch_issues(query):
+def fetch_issues(query, kw_api):
     query['action'] = "search"
     print "Fetching issue list..."
-    query_response = execute_query(query)
+    query_response = execute_query(query, kw_api)
     #Extract issue ids
     data = json.loads(query_response)
     issues = data[id]
