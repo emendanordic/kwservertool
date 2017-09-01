@@ -25,7 +25,7 @@
 from kwplib import kwplib
 from subprocess import call
 
-import argparse, ast, copy, getpass, logging, json
+import argparse, ast, copy, getpass, logging, json, sys
 
 #API example
 #python kwservertool.py --url http://emenda:8080 --user emenda --api '{"action":"version"}'
@@ -35,10 +35,14 @@ parser.add_argument('--url', required=True,
     help='URL to the Klocwork server, e.g. "http://kw.server:8080"')
 parser.add_argument('--user', required=False, default=getpass.getuser(),
     help='The username to use for connecting to the Klocwork server')
-parser.add_argument('--re-project', required=False, default='',
-    help='Regular expression for which matching projects will be processed')
-parser.add_argument('--issues', required=False, dest='issues',
-    action='store_true', help='Execute API query for all issues in matching project(s)')
+parser.add_argument('--project-query', required=False, default='',
+    help='To be used with --projects flag. Regular expression for which matching projects will be processed')
+parser.add_argument('--projects', required=False, dest='runonprojects',
+    action='store_true', help='Execute the cmd/API query for all projects')
+parser.add_argument('--issue-query', required=False, default='',
+    help='TO be used with --issues flag - API query will only be executed on issues matching this search query (e.g. status=Analyze)')
+parser.add_argument('--issues', required=False, dest='runonissues',
+    action='store_true', help='Execute the API query for all issues in matching project(s)')
 
 parser.add_argument('--cmd', required=False, default=None,
     help='Provide a command to execute where {project} will be replaced')
@@ -59,11 +63,19 @@ def main():
         format='%(levelname)s:%(asctime)s %(message)s',
         datefmt='%Y/%m/%d %H:%M:%S')
     logger = logging.getLogger('kwservertool')
+    
+    #check that we have at least projects or issues flag, and not both
+    if args.runonissues and args.runonprojects:
+        print "Error: both --issues and --projects flags are present. Do you want to execute the query on projects or issues? Exiting without doing anything."
+        sys.exit()
+    elif not args.runonissues and not args.runonprojects:
+        print "Error: neither --issues nor --projects flags are present. Do you want to execute the query on projects or issues? Exiting without doing anything."
+        sys.exit()
 
     kw_api = kwplib.KwApiCon(url=args.url, user=args.user, verbose=args.verbose)
 
     # get list of projects
-    projects = kw_api.get_project_list(args.re_project)
+    projects = kw_api.get_project_list(args.project_query)
 
     if args.cmd:
         # execute a command
@@ -92,7 +104,10 @@ def main():
             #Set the project of the query
             values['project'] = project
             # if we are to execute the api command over all issues, we must first fetch the issues
-            if args.issues:
+            if args.runonissues:
+                if args.issue_query:
+                    print "Fetching issues on which to execute with query: " + args.issue_query
+                    values['query'] = args.issue_query
                 issue_groups_list = fetch_issues(copy.deepcopy(values), kw_api)
                 #Iterate over each group of issues
 		id_list = ""
